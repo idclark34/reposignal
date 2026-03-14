@@ -258,10 +258,9 @@ body {
   .mobile-hidden { display: none !important; }
   .problem-grid { grid-template-columns: 1fr !important; }
 
-  /* Input: stack button below field on small screens */
-  .repo-input-wrap { flex-direction: column; }
-  .repo-input-prefix { border-right: none; border-bottom: 1px solid var(--border); padding: 8px 12px; }
-  .repo-submit { padding: 14px 20px; width: 100%; text-align: center; }
+  /* Input: keep prefix+field on one row, wrap button below */
+  .repo-input-wrap { flex-wrap: wrap; }
+  .repo-submit { width: 100%; padding: 14px 20px; text-align: center; border-top: 1.5px solid var(--ink); }
 }
 
 @media (min-width: 769px) {
