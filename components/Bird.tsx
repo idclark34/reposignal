@@ -52,7 +52,7 @@ export default function Bird({
       return () => clearTimers()
     }
     if (state === 'hopping') {
-      const t = setTimeout(() => setState('flying-away'), 2000)
+      const t = setTimeout(() => setState('flying-away'), 1500)
       return () => clearTimeout(t)
     }
 
@@ -100,7 +100,7 @@ export default function Bird({
   // SVG: handles bob / hop / alert only (no translation — that lives in moverStyle)
   const svgStyle = (): React.CSSProperties => {
     if (state === 'sitting') return { animation: 'bird-bob 2s ease-in-out infinite' }
-    if (state === 'hopping') return { animation: 'bird-hop 0.65s ease-in-out infinite' }
+    if (state === 'hopping') return { animation: 'bird-hop 0.5s ease-in-out 3 forwards' }
     if (state === 'alert')   return { animation: 'bird-alert 0.3s ease-out forwards' }
     return {}
   }
@@ -109,7 +109,7 @@ export default function Bird({
     if (state === 'flying-in' || state === 'flying-away')
       return { animation: 'bird-wing-flap 0.35s ease-in-out infinite' }
     if (state === 'hopping')
-      return { animation: 'bird-wing-flap 0.65s ease-in-out infinite' }
+      return { animation: 'bird-wing-flap 0.5s ease-in-out 3 forwards' }
     if (state === 'sitting')
       return { animation: 'bird-wing-idle 3s ease-in-out infinite' }
     return {}
