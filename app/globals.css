@@ -302,10 +302,13 @@ body {
   100% { transform: translateY(-4px) rotate(-6deg); }
 }
 @keyframes bird-hop {
-  0%   { transform: translateY(0); }
-  35%  { transform: translateY(-9px); }
-  60%  { transform: translateY(0); }
-  100% { transform: translateY(0); }
+  0%   { transform: translate(0, 0); }
+  15%  { transform: translate(-8px, -9px); }
+  28%  { transform: translate(-13px, 0); }
+  45%  { transform: translate(-5px, -8px); }
+  58%  { transform: translate(0, 0); }
+  72%  { transform: translate(0, -5px); }
+  100% { transform: translate(0, 0); }
 }
 @keyframes bird-fly-away {
   0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }

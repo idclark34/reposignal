@@ -100,7 +100,7 @@ export default function Bird({
   // SVG: handles bob / hop / alert only (no translation — that lives in moverStyle)
   const svgStyle = (): React.CSSProperties => {
     if (state === 'sitting') return { animation: 'bird-bob 2s ease-in-out infinite' }
-    if (state === 'hopping') return { animation: 'bird-hop 0.5s ease-in-out 3 forwards' }
+    if (state === 'hopping') return { animation: 'bird-hop 1.5s ease-in-out 1 forwards' }
     if (state === 'alert')   return { animation: 'bird-alert 0.3s ease-out forwards' }
     return {}
   }
