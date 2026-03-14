@@ -75,7 +75,7 @@ Produce a marketing report with these exact sections:
   console.log('[synthesize] calling Claude API')
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
