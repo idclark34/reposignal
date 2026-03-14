@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-type BirdState = 'hidden' | 'flying-in' | 'sitting' | 'alert' | 'flying-away'
+type BirdState = 'hidden' | 'flying-in' | 'sitting' | 'alert' | 'hopping' | 'flying-away'
 
 interface BirdProps {
   className?: string
@@ -26,7 +26,8 @@ export default function Bird({
   }
 
   const scheduleFlyAway = () => {
-    sitTimer.current = setTimeout(() => setState('flying-away'), 8000)
+    // Sit for 6s, hop for 2s, then fly away
+    sitTimer.current = setTimeout(() => setState('hopping'), 6000)
   }
 
   const scheduleReturn = () => {
@@ -50,6 +51,11 @@ export default function Bird({
       scheduleFlyAway()
       return () => clearTimers()
     }
+    if (state === 'hopping') {
+      const t = setTimeout(() => setState('flying-away'), 2000)
+      return () => clearTimeout(t)
+    }
+
     if (state === 'flying-away') {
       clearTimers()
       const t = setTimeout(() => setState('hidden'), 800)
@@ -63,13 +69,13 @@ export default function Bird({
   }, [state])
 
   const handleMouseEnter = () => {
-    if (state === 'sitting') { clearTimers(); setState('alert') }
+    if (state === 'sitting' || state === 'hopping') { clearTimers(); setState('alert') }
   }
   const handleMouseLeave = () => {
     if (state === 'alert') setState('sitting')
   }
   const handleClick = () => {
-    if (state === 'sitting' || state === 'alert') { clearTimers(); setState('flying-away') }
+    if (state === 'sitting' || state === 'alert' || state === 'hopping') { clearTimers(); setState('flying-away') }
   }
 
   // Outer div: handles translation animation only (no flip)
@@ -91,9 +97,10 @@ export default function Bird({
     height: 32,
   })
 
-  // SVG: handles bob / alert only (no translation — that lives in moverStyle)
+  // SVG: handles bob / hop / alert only (no translation — that lives in moverStyle)
   const svgStyle = (): React.CSSProperties => {
     if (state === 'sitting') return { animation: 'bird-bob 2s ease-in-out infinite' }
+    if (state === 'hopping') return { animation: 'bird-hop 0.65s ease-in-out infinite' }
     if (state === 'alert')   return { animation: 'bird-alert 0.3s ease-out forwards' }
     return {}
   }
@@ -101,6 +108,8 @@ export default function Bird({
   const wingStyle = (): React.CSSProperties => {
     if (state === 'flying-in' || state === 'flying-away')
       return { animation: 'bird-wing-flap 0.35s ease-in-out infinite' }
+    if (state === 'hopping')
+      return { animation: 'bird-wing-flap 0.65s ease-in-out infinite' }
     if (state === 'sitting')
       return { animation: 'bird-wing-idle 3s ease-in-out infinite' }
     return {}
@@ -113,7 +122,7 @@ export default function Bird({
   }
 
   const eyelidStyle = (): React.CSSProperties => {
-    if (state === 'sitting' || state === 'alert')
+    if (state === 'sitting' || state === 'alert' || state === 'hopping')
       return { animation: 'bird-blink 4s ease-in-out infinite' }
     return {}
   }
