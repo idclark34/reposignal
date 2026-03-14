@@ -307,6 +307,3 @@ body {
   100% { transform: translate(160px, -70px) rotate(-28deg); opacity: 0; }
 }
 
-@media (max-width: 768px) {
-  .bird-container { display: none !important; }
-}

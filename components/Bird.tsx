@@ -4,7 +4,17 @@ import { useEffect, useRef, useState } from 'react'
 
 type BirdState = 'hidden' | 'flying-in' | 'sitting' | 'alert' | 'flying-away'
 
-export default function Bird() {
+interface BirdProps {
+  className?: string
+  perchRight?: string | number
+  perchBottom?: string | number
+}
+
+export default function Bird({
+  className,
+  perchRight = 'clamp(80px, 8vw, 120px)',
+  perchBottom = -1,
+}: BirdProps) {
   const [state, setState] = useState<BirdState>('hidden')
   const hasLandedOnce = useRef(false)
   const sitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -15,14 +25,12 @@ export default function Bird() {
     if (cycleTimer.current) clearTimeout(cycleTimer.current)
   }
 
-  // Schedule the fly-away after sitting for a while
   const scheduleFlyAway = () => {
     sitTimer.current = setTimeout(() => {
       setState('flying-away')
     }, 8000)
   }
 
-  // After flying away, schedule the return
   const scheduleReturn = () => {
     cycleTimer.current = setTimeout(() => {
       setState('flying-in')
@@ -30,7 +38,6 @@ export default function Bird() {
   }
 
   useEffect(() => {
-    // Initial 2s delay before first fly-in
     const initial = setTimeout(() => {
       setState('flying-in')
     }, 2000)
@@ -42,7 +49,6 @@ export default function Bird() {
 
   useEffect(() => {
     if (state === 'flying-in') {
-      // After 1200ms animation, transition to sitting
       const t = setTimeout(() => {
         setState('sitting')
         hasLandedOnce.current = true
@@ -53,10 +59,6 @@ export default function Bird() {
     if (state === 'sitting') {
       scheduleFlyAway()
       return () => clearTimers()
-    }
-
-    if (state === 'alert') {
-      // alert doesn't auto-transition; hover-end returns to sitting
     }
 
     if (state === 'flying-away') {
@@ -82,9 +84,7 @@ export default function Bird() {
   }
 
   const handleMouseLeave = () => {
-    if (state === 'alert') {
-      setState('sitting')
-    }
+    if (state === 'alert') setState('sitting')
   }
 
   const handleClick = () => {
@@ -96,11 +96,10 @@ export default function Bird() {
 
   const isVisible = state !== 'hidden'
 
-  // Per-state animation styles
   const outerStyle = (): React.CSSProperties => {
-    if (state === 'flying-in') return { animation: 'bird-fly-in 1.2s ease-out forwards' }
-    if (state === 'sitting')   return { animation: 'bird-bob 2s ease-in-out infinite' }
-    if (state === 'alert')     return { animation: 'bird-alert 0.3s ease-out forwards' }
+    if (state === 'flying-in')   return { animation: 'bird-fly-in 1.2s ease-out forwards' }
+    if (state === 'sitting')     return { animation: 'bird-bob 2s ease-in-out infinite' }
+    if (state === 'alert')       return { animation: 'bird-alert 0.3s ease-out forwards' }
     if (state === 'flying-away') return { animation: 'bird-fly-away 0.8s ease-in forwards' }
     return {}
   }
@@ -127,11 +126,11 @@ export default function Bird() {
 
   return (
     <div
-      className="bird-container"
+      className={`bird-container${className ? ` ${className}` : ''}`}
       style={{
         position: 'absolute',
-        bottom: -1,
-        right: 'clamp(80px, 8vw, 120px)',
+        bottom: perchBottom,
+        right: perchRight,
         width: 48,
         height: 32,
         zIndex: 10,
@@ -180,19 +179,10 @@ export default function Bird() {
             ...headStyle(),
           }}
         >
-          {/* Head */}
           <circle cx="32" cy="13" r="7" />
-
-          {/* Beak */}
           <path d="M38 12 L44 13.5 L38 15 Z" />
-
-          {/* Eye white */}
           <circle cx="34" cy="12" r="1.8" fill="var(--bg)" />
-
-          {/* Pupil */}
           <circle cx="34.5" cy="12" r="0.9" />
-
-          {/* Eyelid (for blink) */}
           <circle
             cx="34"
             cy="12"

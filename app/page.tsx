@@ -16,7 +16,7 @@ export default function Home() {
         padding: '12px clamp(16px, 5vw, 32px)',
         borderBottom: '1px solid var(--border)',
       }}>
-        <Bird />
+        <Bird className="desktop-only" />
         <span className="mono" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
           RepoSignal
         </span>
@@ -50,7 +50,10 @@ export default function Home() {
 
         {/* CTAs */}
         <div style={{ maxWidth: 540 }}>
-          <GitHubAuth />
+          <div style={{ position: 'relative' }}>
+            <Bird className="mobile-only" perchBottom="100%" perchRight={12} />
+            <GitHubAuth />
+          </div>
           <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <span className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>or analyze any public repo</span>
             <RepoInput />
