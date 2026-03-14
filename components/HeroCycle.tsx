@@ -8,8 +8,8 @@ const headlines = [
     accent: 'But do they actually want it?',
   },
   {
-    main: '3,200 monthly searches. 18 HN comments.',
-    accent: 'None of them reached your landing page.',
+    main: '3,200 searches. 18 HN threads.',
+    accent: 'Not one click to your page.',
   },
   {
     main: 'Your users are already out there talking.',
@@ -43,6 +43,7 @@ export default function HeroCycle() {
         letterSpacing: '-0.03em',
         color: 'var(--ink)',
         maxWidth: '18ch',
+        minHeight: '2em',
         marginBottom: 'clamp(28px, 4vw, 48px)',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(10px)',
