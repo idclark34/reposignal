@@ -1,65 +1,132 @@
-import Image from "next/image";
+import RepoInput from '@/components/RepoInput'
+
+const EXAMPLES = [
+  ['vercel', 'next.js'],
+  ['supabase', 'supabase'],
+  ['trpc', 'trpc'],
+  ['shadcn-ui', 'ui'],
+]
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── Top bar ── */}
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 32px',
+        borderBottom: '1px solid var(--border)',
+      }}>
+        <span className="mono" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
+          RepoSignal
+        </span>
+        <span className="mono" style={{ fontSize: 10, color: 'var(--ink-faint)', letterSpacing: '0.06em' }}>
+          v0.1 · MVP
+        </span>
+      </header>
+
+      {/* ── Hero ── */}
+      <section style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        alignItems: 'center',
+        padding: '40px 32px 0',
+      }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', width: '100%' }}>
+
+          {/* The big heading — dominates mobile */}
+          <h1
+            className="display-italic"
+            style={{
+              fontSize: 'clamp(64px, 11vw, 120px)',
+              lineHeight: 0.93,
+              letterSpacing: '-0.03em',
+              color: 'var(--ink)',
+              marginBottom: 'clamp(32px, 5vw, 56px)',
+              maxWidth: '14ch',
+            }}
+          >
+            Marketing
+            <br />
+            intelligence
+            <br />
+            <span style={{ color: 'var(--accent)' }}>from real</span>
+            <br />
+            data.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          {/* Sub-copy */}
+          <p style={{
+            fontSize: 16,
+            color: 'var(--ink-muted)',
+            maxWidth: 440,
+            lineHeight: 1.65,
+            marginBottom: 32,
+          }}>
+            Drop any GitHub repo. We pull signals from GitHub, Reddit, Hacker News,
+            and Google Trends — then produce grounded recommendations. No hallucinations.
           </p>
+
+          {/* Input */}
+          <div style={{ maxWidth: 520, marginBottom: 32 }}>
+            <RepoInput />
+          </div>
+
+          {/* Examples */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+              Try →
+            </span>
+            {EXAMPLES.map(([owner, name]) => (
+              <a
+                key={`${owner}/${name}`}
+                href={`/dashboard/${owner}/${name}`}
+                className="mono"
+                style={{
+                  fontSize: 12,
+                  color: 'var(--ink-muted)',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid var(--border)',
+                  paddingBottom: 2,
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={undefined}
+              >
+                {owner}/{name}
+              </a>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </section>
+
+      {/* ── Data source strip ── */}
+      <footer style={{
+        borderTop: '1px solid var(--border)',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        marginTop: 64,
+      }}>
+        {[
+          { src: 'GitHub API',      desc: 'Repo metadata, commits, issues, README' },
+          { src: 'Reddit API',      desc: 'Community discussions + pain phrases' },
+          { src: 'HN Algolia',      desc: 'Stories, Show HN, comment themes' },
+          { src: 'Google Trends',   desc: 'Search interest + related queries' },
+        ].map((item, i) => (
+          <div
+            key={item.src}
+            style={{
+              padding: '24px 24px',
+              borderRight: i < 3 ? '1px solid var(--border)' : 'none',
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+            <div className="badge" style={{ marginBottom: 8 }}>{item.src}</div>
+            <p style={{ fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.5 }}>{item.desc}</p>
+          </div>
+        ))}
+      </footer>
+    </main>
+  )
 }
