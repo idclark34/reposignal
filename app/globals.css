@@ -256,6 +256,12 @@ body {
   .has-bottom-nav { padding-bottom: 72px; }
   .desktop-only { display: none !important; }
   .mobile-hidden { display: none !important; }
+  .problem-grid { grid-template-columns: 1fr !important; }
+
+  /* Input: stack button below field on small screens */
+  .repo-input-wrap { flex-direction: column; }
+  .repo-input-prefix { border-right: none; border-bottom: 1px solid var(--border); padding: 8px 12px; }
+  .repo-submit { padding: 14px 20px; width: 100%; text-align: center; }
 }
 
 @media (min-width: 769px) {

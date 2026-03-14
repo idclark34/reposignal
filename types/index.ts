@@ -27,8 +27,36 @@ export interface GitHubSignals {
   websiteUrl: string | null
 }
 
+export interface HNStory {
+  objectId: string
+  title: string
+  url: string | null
+  author: string
+  points: number
+  numComments: number
+  createdAt: string
+}
+
+export interface HNComment {
+  objectId: string
+  text: string
+  storyTitle: string
+  author: string
+  createdAt: string
+}
+
+export interface HNSignals {
+  query: string
+  totalStories: number
+  totalComments: number
+  stories: HNStory[]
+  showHNPosts: HNStory[]
+  topComments: HNComment[]
+}
+
 export interface RawSignals {
   github: GitHubSignals
+  hn?: HNSignals
   fetchedAt: string
 }
 

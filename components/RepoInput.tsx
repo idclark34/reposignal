@@ -43,7 +43,7 @@ export default function RepoInput() {
           spellCheck={false}
         />
         <button type="submit" className="repo-submit">
-          Analyze
+          Analyze my repo
         </button>
       </div>
       {error && (

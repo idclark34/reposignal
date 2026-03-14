@@ -12,6 +12,24 @@ Your job is to produce specific, grounded marketing recommendations based ONLY o
 Do not make up audiences, pain points, or channels that aren't evidenced in the data.
 If the data is thin on a topic, say so rather than guessing.`
 
+  const { hn } = signals
+
+  const hnSection = hn
+    ? `
+## Hacker News Signals (query: "${hn.query}")
+Total story mentions: ${hn.totalStories} | Total comment mentions: ${hn.totalComments}
+
+### Top Stories
+${hn.stories.slice(0, 8).map(s => `- [${s.points}pts, ${s.numComments} comments] ${s.title}`).join('\n') || 'None found'}
+
+### Show HN Posts
+${hn.showHNPosts.slice(0, 5).map(s => `- [${s.points}pts, ${s.numComments} comments] ${s.title}`).join('\n') || 'None found'}
+
+### Sample Comments (community voice)
+${hn.topComments.slice(0, 10).map(c => `- "${c.text}"`).join('\n') || 'None found'}
+`
+    : '\n## Hacker News Signals\nNot available.\n'
+
   const userPrompt = `Analyze this GitHub repository and produce a marketing intelligence report.
 
 ## Repository
@@ -34,6 +52,7 @@ ${github.recentCommits.map(c => `- ${c.message}`).join('\n')}
 
 ## Top Open Issues (by comment count)
 ${github.topIssues.map(i => `- [${i.comments} comments] ${i.title}`).join('\n')}
+${hnSection}
 
 ---
 

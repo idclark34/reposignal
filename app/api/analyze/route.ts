@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchGitHubSignals } from '@/lib/github'
+import { fetchHNSignals } from '@/lib/hn'
 import { synthesize } from '@/lib/synthesize'
 import { AnalysisRequest, RawSignals } from '@/types'
 
@@ -15,9 +16,11 @@ export async function POST(req: NextRequest) {
     console.log(`[analyze] starting analysis for ${owner}/${repo}`)
 
     const github = await fetchGitHubSignals(owner, repo)
+    const hn = await fetchHNSignals(github.name, github.description)
 
     const signals: RawSignals = {
       github,
+      hn,
       fetchedAt: new Date().toISOString(),
     }
 
