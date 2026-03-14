@@ -1,5 +1,6 @@
-import RepoInput from '@/components/RepoInput'
 import HeroCycle from '@/components/HeroCycle'
+import GitHubAuth from '@/components/GitHubAuth'
+import RepoInput from '@/components/RepoInput'
 
 export default function Home() {
   return (
@@ -46,8 +47,10 @@ export default function Home() {
 
         {/* CTAs */}
         <div style={{ maxWidth: 540 }}>
-          <RepoInput />
-          <div style={{ marginTop: 16 }}>
+          <GitHubAuth />
+          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>or analyze any public repo</span>
+            <RepoInput />
             <a
               href="/competitor"
               style={{
@@ -59,6 +62,7 @@ export default function Home() {
                 borderBottom: '1px solid var(--border)',
                 paddingBottom: 1,
                 transition: 'color 0.15s, border-color 0.15s',
+                alignSelf: 'flex-start',
               }}
             >
               or learn from a successful launch →

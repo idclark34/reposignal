@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google'
 import { Fraunces } from 'next/font/google'
 import { IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
+import Providers from './providers'
 
 const geist = Geist({
   variable: '--font-geist-sans',
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geist.variable} ${fraunces.variable} ${ibmPlexMono.variable}`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
