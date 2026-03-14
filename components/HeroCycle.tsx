@@ -12,8 +12,8 @@ const headlines = [
     accent: 'Not one click to your page.',
   },
   {
-    main: 'Your users are already out there talking.',
-    accent: 'The data tells you exactly where.',
+    main: 'Your users are out there talking.',
+    accent: 'The data knows exactly where.',
   },
 ]
 
