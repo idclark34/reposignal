@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     console.log(`[analyze] starting analysis for ${owner}/${repo}`)
 
     const github = await fetchGitHubSignals(owner, repo)
-    const hn = await fetchHNSignals(github.name, github.description)
+    const hn = await fetchHNSignals(github.name, github.description, github.topics)
 
     const signals: RawSignals = {
       github,

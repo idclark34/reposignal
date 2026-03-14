@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { GitHubSignals, RawSignals } from '@/types'
+import { GitHubSignals, HNSignals, RawSignals } from '@/types'
 
 interface Props {
   owner: string
@@ -142,7 +142,7 @@ function SourceBlock({ block }: { block: SourceBlock }) {
 export default function AnalysisProgress({ owner, repo, onComplete, onError }: Props) {
   const [sources, setSources] = useState<SourceBlock[]>([])
   const [elapsed, setElapsed] = useState(0)
-  const [phase, setPhase] = useState<'github' | 'synthesis' | 'done'>('github')
+  const [phase, setPhase] = useState<'github' | 'hn' | 'synthesis' | 'done'>('github')
   const startRef = useRef(Date.now())
 
   // Elapsed timer
@@ -202,7 +202,50 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         addFact('github', `Topics: ${github.topics.slice(0, 6).join('  ·  ')}`)
       }
 
-      // ── Phase 2: Synthesis ──────────────────────────────
+      // ── Phase 2: Hacker News ────────────────────────────
+      await delay(300)
+      setPhase('hn')
+
+      const hnBlock: SourceBlock = {
+        id: 'hn', name: 'Hacker News', status: 'scanning', facts: [], badge: 'HN Algolia API',
+      }
+      setSources(prev => [...prev, hnBlock])
+
+      let hn: HNSignals | undefined
+      try {
+        const res = await fetch('/api/sources/hn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repoName: github.name,
+            repoDescription: github.description,
+            topics: github.topics,
+          }),
+        })
+        if (!res.ok) throw new Error((await res.json()).error ?? 'HN fetch failed')
+        hn = await res.json()
+      } catch {
+        // HN failure is non-fatal — continue without it
+        updateSource('hn', { status: 'error', facts: ['Could not reach HN — continuing without it'] })
+      }
+
+      if (hn && !cancelled) {
+        updateSource('hn', { status: 'done' })
+        await delay(100)
+        addFact('hn', `${hn.totalStories.toLocaleString()} story mentions  ·  ${hn.totalComments.toLocaleString()} comment mentions`)
+        await delay(80)
+        addFact('hn', `Query: "${hn.query}"`)
+        if (hn.showHNPosts.length > 0) {
+          await delay(80)
+          addFact('hn', `${hn.showHNPosts.length} Show HN post${hn.showHNPosts.length > 1 ? 's' : ''} found`)
+        }
+        if (hn.topComments.length > 0) {
+          await delay(80)
+          addFact('hn', `${hn.topComments.length} community comments indexed`)
+        }
+      }
+
+      // ── Phase 3: Synthesis ──────────────────────────────
       await delay(300)
       setPhase('synthesis')
 
@@ -211,7 +254,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       }
       setSources(prev => [...prev, synBlock])
 
-      const signals: RawSignals = { github, fetchedAt: new Date().toISOString() }
+      const signals: RawSignals = { github, hn, fetchedAt: new Date().toISOString() }
       let report: string
 
       try {
