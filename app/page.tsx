@@ -1,6 +1,7 @@
 import HeroCycle from '@/components/HeroCycle'
 import GitHubAuth from '@/components/GitHubAuth'
 import RepoInput from '@/components/RepoInput'
+import Bird from '@/components/Bird'
 
 export default function Home() {
   return (
@@ -8,12 +9,14 @@ export default function Home() {
 
       {/* ── Top bar ── */}
       <header style={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '12px clamp(16px, 5vw, 32px)',
         borderBottom: '1px solid var(--border)',
       }}>
+        <Bird />
         <span className="mono" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
           RepoSignal
         </span>

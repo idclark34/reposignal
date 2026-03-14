@@ -266,3 +266,47 @@ body {
 @media (min-width: 769px) {
   .mobile-only { display: none !important; }
 }
+
+/* ─── Bird animations ─────────────────────────────────────── */
+@keyframes bird-fly-in {
+  0%   { transform: translate(120px, -60px) rotate(-25deg); opacity: 0; }
+  20%  { opacity: 1; }
+  60%  { transform: translate(20px, -10px) rotate(-10deg); }
+  80%  { transform: translate(4px, 2px) rotate(5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+}
+@keyframes bird-bob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-2px); }
+}
+@keyframes bird-wing-idle {
+  0%, 100% { transform: rotate(0deg); }
+  40%       { transform: rotate(-14deg); }
+}
+@keyframes bird-wing-flap {
+  0%, 100% { transform: rotate(0deg); }
+  25%       { transform: rotate(-32deg); }
+  75%       { transform: rotate(18deg); }
+}
+@keyframes bird-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%            { transform: scaleY(0.05); }
+}
+@keyframes bird-head-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  25%       { transform: rotate(-10deg); }
+  60%       { transform: rotate(-7deg); }
+}
+@keyframes bird-alert {
+  0%   { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-4px) rotate(-6deg); }
+}
+@keyframes bird-fly-away {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  20%  { transform: translate(15px, -12px) rotate(-18deg); }
+  100% { transform: translate(160px, -70px) rotate(-28deg); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+  .bird-container { display: none !important; }
+}
