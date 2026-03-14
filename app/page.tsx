@@ -1,4 +1,5 @@
 import RepoInput from '@/components/RepoInput'
+import HeroCycle from '@/components/HeroCycle'
 
 export default function Home() {
   return (
@@ -29,20 +30,7 @@ export default function Home() {
       }}>
 
         {/* H1 */}
-        <h1
-          className="display-italic"
-          style={{
-            fontSize: 'clamp(36px, 11vw, 120px)',
-            lineHeight: 0.93,
-            letterSpacing: '-0.03em',
-            color: 'var(--ink)',
-            maxWidth: '18ch',
-            marginBottom: 'clamp(28px, 4vw, 48px)',
-          }}
-        >
-          500 stars. 47 Reddit upvotes.{' '}
-          <span style={{ color: 'var(--accent)' }}>But do they actually want it?</span>
-        </h1>
+        <HeroCycle />
 
         {/* Subheading */}
         <p style={{
