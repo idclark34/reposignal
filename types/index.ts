@@ -25,6 +25,7 @@ export interface GitHubSignals {
   contributors: number
   hasWebsite: boolean
   websiteUrl: string | null
+  keyFiles: { path: string; content: string }[]
 }
 
 export interface HNStory {

@@ -4,92 +4,102 @@ import { RawSignals } from '@/types'
 const client = new Anthropic()
 
 export async function synthesize(signals: RawSignals): Promise<string> {
-  const { github } = signals
+  const { github, hn, reddit } = signals
 
-  const systemPrompt = `You are a product marketing strategist specializing in developer tools and indie software products.
-You are given real data collected from multiple sources about a GitHub repository.
-Your job is to produce specific, grounded marketing recommendations based ONLY on what the data shows.
-Do not make up audiences, pain points, or channels that aren't evidenced in the data.
-If the data is thin on a topic, say so rather than guessing.`
+  const systemPrompt = `You are a product analyst specializing in developer tools and indie software.
+You have been given real data from multiple sources about a GitHub repository — including its actual source code, README, issues, and real community discussions from Hacker News and Reddit.
 
-  const { hn, reddit } = signals
+Your job is to produce a specific, evidence-based intelligence report.
+
+Rules:
+- Every claim about pain points or audience MUST be backed by specific evidence from the data (quote actual HN/Reddit posts/comments, cite issue titles, reference what the code actually does)
+- Do NOT make up audiences, channels, or pain points that aren't evidenced in the data
+- When HN or Reddit data is available, treat it as ground truth about what real users complain about — quote it directly
+- When the code files contradict the README, trust the code
+- If data is thin on a topic, say so explicitly rather than guessing`
 
   const hnSection = hn
     ? `
-## Hacker News Signals (query: "${hn.query}")
-Total story mentions: ${hn.totalStories} | Total comment mentions: ${hn.totalComments}
+## Hacker News (query: "${hn.query}")
+Total mentions: ${hn.totalStories} stories · ${hn.totalComments} comments
 
-### Top Stories
-${hn.stories.slice(0, 8).map(s => `- [${s.points}pts, ${s.numComments} comments] ${s.title}`).join('\n') || 'None found'}
+Top stories:
+${hn.stories.slice(0, 10).map(s => `- [${s.points}pts, ${s.numComments} comments] "${s.title}"`).join('\n') || 'None'}
 
-### Show HN Posts
-${hn.showHNPosts.slice(0, 5).map(s => `- [${s.points}pts, ${s.numComments} comments] ${s.title}`).join('\n') || 'None found'}
+Show HN posts:
+${hn.showHNPosts.slice(0, 5).map(s => `- [${s.points}pts, ${s.numComments} comments] "${s.title}"`).join('\n') || 'None'}
 
-### Sample Comments (community voice)
-${hn.topComments.slice(0, 10).map(c => `- "${c.text}"`).join('\n') || 'None found'}
+Community comments (verbatim pain language — use these quotes):
+${hn.topComments.slice(0, 12).map(c => `- "${c.text}" (on: ${c.storyTitle})`).join('\n') || 'None'}
 `
-    : '\n## Hacker News Signals\nNot available.\n'
+    : '## Hacker News\nNo data available.\n'
 
   const redditSection = reddit
     ? `
-## Reddit Signals (query: "${reddit.query}")
+## Reddit (query: "${reddit.query}")
 Total results: ${reddit.totalResults}
 
-### Top Posts
-${reddit.posts.slice(0, 8).map(p =>
-  `- [r/${p.subreddit}, ${p.score} upvotes, ${p.numComments} comments] ${p.title}${p.selftext ? `\n  "${p.selftext.slice(0, 120)}..."` : ''}`
-).join('\n') || 'None found'}
+Top posts:
+${reddit.posts.slice(0, 10).map(p =>
+  `- [r/${p.subreddit}, ${p.score}↑, ${p.numComments} comments] "${p.title}"${p.selftext ? `\n  > ${p.selftext.slice(0, 150)}` : ''}`
+).join('\n') || 'None'}
 `
-    : '\n## Reddit Signals\nNot available.\n'
+    : '## Reddit\nNo data available.\n'
 
-  const userPrompt = `Analyze this GitHub repository and produce a marketing intelligence report.
+  const codeSection = github.keyFiles.length > 0
+    ? `
+## Key Source Files (actual code — use this to understand what the app really does)
+${github.keyFiles.map(f => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n')}
+`
+    : ''
+
+  const userPrompt = `Analyze this repository and produce a marketing intelligence report grounded in the evidence below.
 
 ## Repository
 Name: ${github.name}
 Description: ${github.description}
-Primary Language: ${github.language}
-Stars: ${github.stars} | Forks: ${github.forks}
-Topics: ${github.topics.join(', ')}
+Language: ${github.language} | Stars: ${github.stars} | Forks: ${github.forks} | Contributors: ${github.contributors}
+Topics: ${github.topics.join(', ') || 'none'}
 License: ${github.license ?? 'None'}
-Created: ${github.createdAt} | Last Updated: ${github.updatedAt}
-Contributors: ${github.contributors}
-Open Issues: ${github.openIssues}
+Created: ${github.createdAt.slice(0, 10)} | Last updated: ${github.updatedAt.slice(0, 10)}
+Open issues: ${github.openIssues}
 ${github.hasWebsite ? `Website: ${github.websiteUrl}` : 'No website listed'}
 
-## README (first 3000 chars)
-${github.readme.slice(0, 3000)}
+## README
+${github.readme.slice(0, 2500)}
 
-## Recent Commit Messages (last 20)
-${github.recentCommits.map(c => `- ${c.message}`).join('\n')}
+## Recent Commits (last 20)
+${github.recentCommits.map(c => `- ${c.date.slice(0, 10)}  ${c.message}`).join('\n')}
 
 ## Top Open Issues (by comment count)
-${github.topIssues.map(i => `- [${i.comments} comments] ${i.title}`).join('\n')}
+${github.topIssues.map(i => `- [${i.comments} comments] ${i.title}\n  ${i.body.slice(0, 200)}`).join('\n') || 'None'}
+${codeSection}
 ${hnSection}
 ${redditSection}
 
 ---
 
-Produce a marketing report with these exact sections:
+Produce a report with these exact sections. Each section must cite specific evidence from the data above.
 
-1. **ICP (Ideal Customer Profile)** — Based on who is filing issues, commit patterns, and the README, who is the actual target user? Be specific. Not "developers" — "solo devs building X who struggle with Y."
+1. **What This App Actually Does** — Based on the code and README, describe precisely what the app does. What problem does it solve? What are the key technical components? This should be more specific than the README — use the code files.
 
-2. **Positioning Angle** — What is the single strongest angle to lead with? What problem language resonates most?
+2. **ICP (Ideal Customer Profile)** — Who is the actual target user? Cite specific evidence: issue authors, the language in HN/Reddit posts, what the code structure implies about sophistication level. Not "developers" — "solo devs who ship side projects and struggle with X, evidenced by [specific HN comment / issue]."
 
-3. **Top 3 Launch Channels** — Ranked by evidence in the data. For each: the community/platform, why the data supports it, and what angle to use there specifically.
+3. **Positioning Angle** — The single strongest angle based on real pain language from the community data. Quote the most compelling HN or Reddit post/comment that captures the pain this app solves.
 
-4. **Show HN Headline** — Write 3 candidate Show HN titles based on the project.
+4. **Top 3 Launch Channels** — Ranked by evidence. For each: name the specific community, cite why (e.g. "r/SideProject has 12 posts with 500+ upvotes about this exact problem"), and give the exact angle to use there.
 
-5. **Content Ideas** — 5 specific tweet/post ideas grounded in the pain language found in the data.
+5. **Build-in-Public Content Ideas** — 5 specific posts grounded in real community pain language. For each, note which HN/Reddit signal it came from.
 
-6. **Timing Recommendation** — Based on GitHub activity (commit frequency, issue velocity), is this project ready to launch publicly?
+6. **Deployment & Launch Readiness** — Is this app ready to launch? What's missing? Cite commit velocity, open issue quality, and any gaps between what the code does vs what the README promises.
 
-7. **Gaps & Risks** — What does the data suggest is missing or risky about the current positioning?`
+7. **Gaps & Risks** — What does the data say is missing, risky, or likely to confuse the target user on first encounter?`
 
-  console.log('[synthesize] calling Claude API')
+  console.log('[synthesize] calling Claude, context size ~', userPrompt.length, 'chars')
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
+    max_tokens: 4096,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })
