@@ -91,7 +91,7 @@ export default function Bird({
   // Smooth turn when landing (flying-in → sitting transition)
   const flipperStyle = (): React.CSSProperties => ({
     transform: state === 'flying-in' ? 'scaleX(-1)' : 'scaleX(1)',
-    transition: state === 'sitting' ? 'transform 0.35s ease-in-out' : 'none',
+    transition: state === 'sitting' ? 'transform 0.35s ease-in-out 1.5s' : 'none',
     display: 'block',
     width: 48,
     height: 32,
