@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { GitHubSignals, HNSignals, RawSignals } from '@/types'
+import { GitHubSignals, HNSignals, RedditSignals, RawSignals } from '@/types'
 
 interface Props {
   owner: string
@@ -142,7 +142,7 @@ function SourceBlock({ block }: { block: SourceBlock }) {
 export default function AnalysisProgress({ owner, repo, onComplete, onError }: Props) {
   const [sources, setSources] = useState<SourceBlock[]>([])
   const [elapsed, setElapsed] = useState(0)
-  const [phase, setPhase] = useState<'github' | 'hn' | 'synthesis' | 'done'>('github')
+  const [phase, setPhase] = useState<'github' | 'sources' | 'synthesis' | 'done'>('github')
   const startRef = useRef(Date.now())
 
   // Elapsed timer
@@ -202,47 +202,60 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         addFact('github', `Topics: ${github.topics.slice(0, 6).join('  ·  ')}`)
       }
 
-      // ── Phase 2: Hacker News ────────────────────────────
+      // ── Phase 2: HN + Reddit in parallel ───────────────
       await delay(300)
-      setPhase('hn')
+      setPhase('sources')
 
       const hnBlock: SourceBlock = {
         id: 'hn', name: 'Hacker News', status: 'scanning', facts: [], badge: 'HN Algolia API',
       }
-      setSources(prev => [...prev, hnBlock])
+      const redditBlock: SourceBlock = {
+        id: 'reddit', name: 'Reddit', status: 'scanning', facts: [], badge: 'Reddit API',
+      }
+      setSources(prev => [...prev, hnBlock, redditBlock])
+
+      const sourcePayload = {
+        repoName: github.name,
+        repoDescription: github.description,
+        topics: github.topics,
+      }
+
+      const [hnRes, redditRes] = await Promise.allSettled([
+        fetch('/api/sources/hn',     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sourcePayload) }),
+        fetch('/api/sources/reddit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sourcePayload) }),
+      ])
 
       let hn: HNSignals | undefined
-      try {
-        const res = await fetch('/api/sources/hn', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            repoName: github.name,
-            repoDescription: github.description,
-            topics: github.topics,
-          }),
-        })
-        if (!res.ok) throw new Error((await res.json()).error ?? 'HN fetch failed')
-        hn = await res.json()
-      } catch {
-        // HN failure is non-fatal — continue without it
+      if (hnRes.status === 'fulfilled' && hnRes.value.ok) {
+        hn = await hnRes.value.json()
+        updateSource('hn', { status: 'done' })
+        await delay(80)
+        addFact('hn', `${hn!.totalStories.toLocaleString()} story mentions  ·  ${hn!.totalComments.toLocaleString()} comment mentions`)
+        await delay(80)
+        addFact('hn', `Query: "${hn!.query}"`)
+        if (hn!.showHNPosts.length > 0) {
+          await delay(80)
+          addFact('hn', `${hn!.showHNPosts.length} Show HN post${hn!.showHNPosts.length > 1 ? 's' : ''} found`)
+        }
+      } else {
         updateSource('hn', { status: 'error', facts: ['Could not reach HN — continuing without it'] })
       }
 
-      if (hn && !cancelled) {
-        updateSource('hn', { status: 'done' })
-        await delay(100)
-        addFact('hn', `${hn.totalStories.toLocaleString()} story mentions  ·  ${hn.totalComments.toLocaleString()} comment mentions`)
+      let reddit: RedditSignals | undefined
+      if (redditRes.status === 'fulfilled' && redditRes.value.ok) {
+        reddit = await redditRes.value.json()
+        updateSource('reddit', { status: 'done' })
         await delay(80)
-        addFact('hn', `Query: "${hn.query}"`)
-        if (hn.showHNPosts.length > 0) {
+        addFact('reddit', `${reddit!.totalResults.toLocaleString()} results  ·  ${reddit!.posts.length} posts indexed`)
+        await delay(80)
+        addFact('reddit', `Query: "${reddit!.query}"`)
+        if (reddit!.posts.length > 0) {
+          const topSubs = [...new Set(reddit!.posts.slice(0, 5).map(p => `r/${p.subreddit}`))].join('  ·  ')
           await delay(80)
-          addFact('hn', `${hn.showHNPosts.length} Show HN post${hn.showHNPosts.length > 1 ? 's' : ''} found`)
+          addFact('reddit', `Top subreddits: ${topSubs}`)
         }
-        if (hn.topComments.length > 0) {
-          await delay(80)
-          addFact('hn', `${hn.topComments.length} community comments indexed`)
-        }
+      } else {
+        updateSource('reddit', { status: 'error', facts: ['Could not reach Reddit — continuing without it'] })
       }
 
       // ── Phase 3: Synthesis ──────────────────────────────
@@ -254,7 +267,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       }
       setSources(prev => [...prev, synBlock])
 
-      const signals: RawSignals = { github, hn, fetchedAt: new Date().toISOString() }
+      const signals: RawSignals = { github, hn, reddit, fetchedAt: new Date().toISOString() }
       let report: string
 
       try {
@@ -322,7 +335,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
               color: phase === 'done' ? 'var(--accent)' : 'var(--dark-muted)',
             }}
           >
-            {phase === 'done' ? '● Complete' : '● Live'}
+            {phase === 'done' ? '● Complete' : phase === 'synthesis' ? '● Synthesizing' : '● Scanning'}
           </span>
         </div>
       </div>

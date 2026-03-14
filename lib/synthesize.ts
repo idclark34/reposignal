@@ -12,7 +12,7 @@ Your job is to produce specific, grounded marketing recommendations based ONLY o
 Do not make up audiences, pain points, or channels that aren't evidenced in the data.
 If the data is thin on a topic, say so rather than guessing.`
 
-  const { hn } = signals
+  const { hn, reddit } = signals
 
   const hnSection = hn
     ? `
@@ -29,6 +29,18 @@ ${hn.showHNPosts.slice(0, 5).map(s => `- [${s.points}pts, ${s.numComments} comme
 ${hn.topComments.slice(0, 10).map(c => `- "${c.text}"`).join('\n') || 'None found'}
 `
     : '\n## Hacker News Signals\nNot available.\n'
+
+  const redditSection = reddit
+    ? `
+## Reddit Signals (query: "${reddit.query}")
+Total results: ${reddit.totalResults}
+
+### Top Posts
+${reddit.posts.slice(0, 8).map(p =>
+  `- [r/${p.subreddit}, ${p.score} upvotes, ${p.numComments} comments] ${p.title}${p.selftext ? `\n  "${p.selftext.slice(0, 120)}..."` : ''}`
+).join('\n') || 'None found'}
+`
+    : '\n## Reddit Signals\nNot available.\n'
 
   const userPrompt = `Analyze this GitHub repository and produce a marketing intelligence report.
 
@@ -53,6 +65,7 @@ ${github.recentCommits.map(c => `- ${c.message}`).join('\n')}
 ## Top Open Issues (by comment count)
 ${github.topIssues.map(i => `- [${i.comments} comments] ${i.title}`).join('\n')}
 ${hnSection}
+${redditSection}
 
 ---
 

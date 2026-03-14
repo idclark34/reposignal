@@ -54,9 +54,27 @@ export interface HNSignals {
   topComments: HNComment[]
 }
 
+export interface RedditPost {
+  id: string
+  title: string
+  subreddit: string
+  score: number
+  numComments: number
+  url: string
+  selftext: string
+  createdAt: string
+}
+
+export interface RedditSignals {
+  query: string
+  totalResults: number
+  posts: RedditPost[]
+}
+
 export interface RawSignals {
   github: GitHubSignals
   hn?: HNSignals
+  reddit?: RedditSignals
   fetchedAt: string
 }
 
