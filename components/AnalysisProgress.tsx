@@ -19,6 +19,7 @@ interface SourceBlock {
   status: SourceStatus
   facts: string[]
   badge: string
+  liveText?: string
 }
 
 function delay(ms: number) {
@@ -122,7 +123,7 @@ function SourceCard({ block }: { block: SourceBlock }) {
 
       {/* Facts */}
       {visibleFacts.length > 0 && (
-        <div style={{ padding: '10px 16px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ padding: '10px 16px 4px', display: 'flex', flexDirection: 'column', gap: 5 }}>
           {visibleFacts.map((fact, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
               <span style={{ color: meta.color, flexShrink: 0, fontSize: 10, marginTop: 1 }}>—</span>
@@ -131,6 +132,21 @@ function SourceCard({ block }: { block: SourceBlock }) {
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Live streaming preview */}
+      {block.liveText && (
+        <div style={{ padding: '6px 16px 12px' }}>
+          <div style={{
+            fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11,
+            color: 'var(--text-faint)', lineHeight: 1.6,
+            borderLeft: `2px solid ${meta.color}40`,
+            paddingLeft: 10,
+          }}>
+            {block.liveText}
+            <span className="blink" style={{ color: meta.color }}>▌</span>
+          </div>
         </div>
       )}
     </div>
@@ -276,8 +292,8 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         }
 
         // Route streams NDJSON: keepalive newlines, then one JSON line per chunk.
-        // First line: { type: 'summary', summary: {...} }  — arrives fast via Haiku
-        // Second line: { type: 'report', fullReport: '...' } — arrives after Sonnet
+        // { type: 'summary', summary: {...} }   — Haiku, arrives in ~3-5s
+        // { type: 'report_chunk', text: '...' } — Haiku streaming tokens
         const reader = res.body!.getReader()
         const decoder = new TextDecoder()
         let buf = ''
@@ -298,11 +314,20 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
             if (data.type === 'summary') {
               summary = data.summary ?? null
               addFact('synthesis', 'ICP + signals data ready')
-            } else if (data.type === 'report') {
-              report = data.fullReport ?? ''
+            } else if (data.type === 'report_chunk') {
+              report += data.text
+              // Show a live preview of the first ~180 chars as they arrive
+              setSources(prev => prev.map(s =>
+                s.id === 'synthesis' ? { ...s, liveText: report.slice(0, 180) } : s
+              ))
             }
           }
         }
+
+        // Clear the live preview now that we're done streaming
+        setSources(prev => prev.map(s =>
+          s.id === 'synthesis' ? { ...s, liveText: undefined } : s
+        ))
 
         if (!report) throw new Error('Synthesis returned invalid response')
       } catch (err: any) {

@@ -76,7 +76,7 @@ ${redditSection}`
   return { systemPrompt, repoContext }
 }
 
-// ── Call 1: summary JSON via Haiku (fast) ────────────────────────────────────
+// ── Call 1: summary JSON via Haiku (fast, non-streaming) ─────────────────────
 async function callSummaryJSON(
   systemPrompt: string,
   repoContext: string,
@@ -133,12 +133,8 @@ ${repoContext}`
   }
 }
 
-// ── Call 2: full prose report via Sonnet ─────────────────────────────────────
-async function callFullReport(
-  systemPrompt: string,
-  repoContext: string,
-): Promise<string> {
-  const userPrompt = `Analyze this repository and write a marketing intelligence report grounded in the evidence below.
+// ── Call 2: streaming prose report via Haiku (fast + incremental) ─────────────
+const REPORT_USER_PROMPT = `Analyze this repository and write a marketing intelligence report grounded in the evidence below.
 
 Produce a report with these exact sections. Each section must cite specific evidence from the data above.
 
@@ -158,48 +154,53 @@ Produce a report with these exact sections. Each section must cite specific evid
 
 ---
 
-${repoContext}`
+`
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2500,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-  })
-
-  console.log('[synthesize] report done, tokens:', message.usage)
-  return message.content[0].type === 'text' ? message.content[0].text : ''
-}
-
-// ── Streaming export ─────────────────────────────────────────────────────────
+// ── Chunk types ───────────────────────────────────────────────────────────────
 export type SynthesisChunk =
   | { type: 'summary'; summary: ReportSummary | null }
-  | { type: 'report'; fullReport: string }
+  | { type: 'report_chunk'; text: string }
 
-// Backwards-compatible wrapper for legacy callers
+// ── Backwards-compatible wrapper for legacy callers ───────────────────────────
 export async function synthesize(signals: RawSignals): Promise<{ summary: ReportSummary | null; fullReport: string }> {
   let summary: ReportSummary | null = null
   let fullReport = ''
   for await (const chunk of synthesizeStreaming(signals)) {
     if (chunk.type === 'summary') summary = chunk.summary
-    if (chunk.type === 'report') fullReport = chunk.fullReport
+    if (chunk.type === 'report_chunk') fullReport += chunk.text
   }
   return { summary, fullReport }
 }
 
+// ── Main streaming export ─────────────────────────────────────────────────────
 export async function* synthesizeStreaming(signals: RawSignals): AsyncGenerator<SynthesisChunk> {
   const { systemPrompt, repoContext } = buildContext(signals)
   console.log('[synthesize] starting parallel calls, context ~', repoContext.length, 'chars')
 
-  // Fire both calls immediately — they run concurrently
+  // Fire both requests immediately so they run concurrently.
+  // client.messages.stream() opens the HTTP connection right away —
+  // it doesn't wait for the first iteration.
   const summaryP = callSummaryJSON(systemPrompt, repoContext)
-  const reportP = callFullReport(systemPrompt, repoContext)
+  const reportStream = client.messages.stream({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: REPORT_USER_PROMPT + repoContext }],
+  })
 
-  // Yield summary as soon as Haiku responds (~3-5s)
+  // Yield summary as soon as the small Haiku call completes (~3-5s)
   const summary = await summaryP
   yield { type: 'summary', summary }
 
-  // Yield report when Sonnet finishes (runs in parallel with above)
-  const fullReport = await reportP
-  yield { type: 'report', fullReport }
+  // Stream report tokens as they arrive from the concurrent Haiku call
+  for await (const event of reportStream) {
+    if (
+      event.type === 'content_block_delta' &&
+      event.delta.type === 'text_delta'
+    ) {
+      yield { type: 'report_chunk', text: event.delta.text }
+    }
+  }
+
+  console.log('[synthesize] report stream complete')
 }
