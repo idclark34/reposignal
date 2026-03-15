@@ -79,6 +79,19 @@ export interface RawSignals {
   fetchedAt: string
 }
 
+export interface ReportSummary {
+  icp: string
+  topChannel: string
+  trendDirection: 'rising' | 'stable' | 'declining'
+  audienceSize: 'small' | 'medium' | 'large'
+  launchReadiness: number
+  topSubreddits: string[]
+  painPhrases: string[]
+  showHNHeadline: string
+  biggestRisk: string
+  winningAngle: string
+}
+
 export interface AnalysisRequest {
   owner: string
   repo: string
@@ -88,4 +101,45 @@ export interface AnalysisResponse {
   signals: RawSignals
   report: string
   cached: boolean
+}
+
+export type PlaybookPlatform = 'twitter' | 'hn' | 'reddit' | 'producthunt' | 'newsletter'
+
+export interface PlaybookContentExample {
+  platform: PlaybookPlatform
+  text: string
+  engagement: string
+  context?: string
+}
+
+export interface PlaybookMilestone {
+  label: string
+  description: string
+  timeframe: string
+}
+
+export interface PlaybookEntry {
+  id: string
+  name: string
+  tagline: string
+  repo: string
+  currentStars: string
+  categories: string[]
+  stack: string[]
+  launchYear: number
+  channels: PlaybookPlatform[]
+  contentExamples: PlaybookContentExample[]
+  milestones: PlaybookMilestone[]
+  lessons: string[]
+  channelNotes: string
+}
+
+export interface PlaybookMatch {
+  playbook: PlaybookEntry
+  matchReason: string
+  matchScore: number
+}
+
+export interface PlaybooksResponse {
+  matches: PlaybookMatch[]
 }

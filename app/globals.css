@@ -304,9 +304,10 @@ body {
   border: 1px solid var(--border);
   overflow: hidden;
 }
-.signal-card-reddit { border-top: 3px solid var(--reddit-orange); }
-.signal-card-hn     { border-top: 3px solid var(--hn-orange); }
-.signal-card-github { border-top: 3px solid var(--github-gray); }
+.signal-card-reddit   { border-top: 3px solid var(--reddit-orange); }
+.signal-card-hn       { border-top: 3px solid var(--hn-orange); }
+.signal-card-github   { border-top: 3px solid var(--github-gray); }
+.signal-card-playbook { border-top: 3px solid #0A7D4E; }
 
 /* ─── Feature cards ──────────────────────────────────────────────── */
 .feature-card {

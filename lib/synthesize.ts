@@ -1,9 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { RawSignals } from '@/types'
+import { RawSignals, ReportSummary } from '@/types'
+import { humanizeReport } from '@/lib/humanize'
 
 const client = new Anthropic()
 
-export async function synthesize(signals: RawSignals): Promise<string> {
+export async function synthesize(signals: RawSignals): Promise<{ summary: ReportSummary | null; fullReport: string }> {
   const { github, hn, reddit } = signals
 
   const systemPrompt = `You are a product analyst specializing in developer tools and indie software.
@@ -54,6 +55,34 @@ ${github.keyFiles.map(f => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('
     : ''
 
   const userPrompt = `Analyze this repository and produce a marketing intelligence report grounded in the evidence below.
+
+First, output a JSON block wrapped in <summary> tags with exactly this structure:
+
+<summary>
+{
+  "icp": "One sentence describing the ideal user",
+  "topChannel": "Single best launch channel",
+  "trendDirection": "rising",
+  "audienceSize": "medium",
+  "launchReadiness": 72,
+  "topSubreddits": ["r/name1", "r/name2", "r/name3"],
+  "painPhrases": ["phrase1", "phrase2", "phrase3"],
+  "showHNHeadline": "Best Show HN headline candidate",
+  "biggestRisk": "One sentence on the biggest positioning risk",
+  "winningAngle": "The single strongest marketing angle"
+}
+</summary>
+
+trendDirection must be exactly one of: "rising", "stable", "declining"
+audienceSize must be exactly one of: "small", "medium", "large"
+launchReadiness must be an integer 0-100
+topSubreddits must include the "r/" prefix
+painPhrases must be 3 short phrases (under 8 words each) quoting actual user pain language from the data
+
+Then write the full report below.
+
+---
+
 
 ## Repository
 Name: ${github.name}
@@ -107,6 +136,25 @@ Produce a report with these exact sections. Each section must cite specific evid
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Unexpected response type from Claude')
 
-  console.log('[synthesize] done, tokens used:', message.usage)
-  return content.text
+  const raw = content.text
+  const summaryMatch = raw.match(/<summary>([\s\S]*?)<\/summary>/)
+  let summary: ReportSummary | null = null
+  let fullReport = raw
+
+  if (summaryMatch) {
+    try {
+      summary = JSON.parse(summaryMatch[1].trim())
+      // Clamp launchReadiness to 0-100
+      if (summary) summary.launchReadiness = Math.max(0, Math.min(100, Math.round(summary.launchReadiness)))
+    } catch {
+      // summary stays null
+    }
+    const afterTag = raw.indexOf('</summary>') + '</summary>'.length
+    fullReport = raw.slice(afterTag).trim()
+  }
+
+  console.log('[synthesize] done, tokens used:', message.usage, '| summary parsed:', !!summary)
+
+  const humanizedReport = await humanizeReport(fullReport)
+  return { summary, fullReport: humanizedReport }
 }

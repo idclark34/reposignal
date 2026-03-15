@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { GitHubSignals, HNSignals, RedditSignals, RawSignals } from '@/types'
+import { GitHubSignals, HNSignals, RedditSignals, RawSignals, PlaybooksResponse, ReportSummary } from '@/types'
 
 interface Props {
   owner: string
   repo: string
-  onComplete: (signals: RawSignals, report: string) => void
+  onComplete: (signals: RawSignals, report: string, summary: ReportSummary | null, playbooks: PlaybooksResponse | null) => void
   onError: (msg: string) => void
 }
 
@@ -42,6 +42,7 @@ const SOURCE_META: Record<string, { color: string; badge: React.ReactNode }> = {
   hn:        { color: '#FF6600', badge: <span style={{ display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:600,background:'rgba(255,102,0,0.09)',color:'#FF6600',borderRadius:9999,padding:'2px 8px',fontFamily:'var(--font-ibm-plex-mono)' }}>HN Algolia</span> },
   reddit:    { color: '#FF4500', badge: <span style={{ display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:600,background:'rgba(255,69,0,0.09)',color:'#FF4500',borderRadius:9999,padding:'2px 8px',fontFamily:'var(--font-ibm-plex-mono)' }}>Reddit API</span> },
   synthesis: { color: '#7C3AED', badge: <span style={{ display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:600,background:'rgba(124,58,237,0.09)',color:'#7C3AED',borderRadius:9999,padding:'2px 8px',fontFamily:'var(--font-ibm-plex-mono)' }}>Claude API</span> },
+  playbooks: { color: '#0A7D4E', badge: <span style={{ display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:600,background:'rgba(10,125,78,0.09)',color:'#0A7D4E',borderRadius:9999,padding:'2px 8px',fontFamily:'var(--font-ibm-plex-mono)' }}>Growth DB</span> },
 }
 
 function SourceCard({ block }: { block: SourceBlock }) {
@@ -138,7 +139,7 @@ function SourceCard({ block }: { block: SourceBlock }) {
 export default function AnalysisProgress({ owner, repo, onComplete, onError }: Props) {
   const [sources, setSources] = useState<SourceBlock[]>([])
   const [elapsed, setElapsed] = useState(0)
-  const [phase, setPhase] = useState<'github' | 'sources' | 'synthesis' | 'done'>('github')
+  const [phase, setPhase] = useState<'github' | 'sources' | 'synthesis' | 'playbooks' | 'done'>('github')
   const startRef = useRef(Date.now())
 
   useEffect(() => {
@@ -244,6 +245,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
 
       const signals: RawSignals = { github, hn, reddit, fetchedAt: new Date().toISOString() }
       let report: string
+      let summary = null
 
       try {
         const res = await fetch('/api/synthesize', {
@@ -252,7 +254,8 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         })
         if (!res.ok) throw new Error((await res.json()).error ?? 'Synthesis failed')
         const data = await res.json()
-        report = data.report
+        report = data.fullReport ?? data.report
+        summary = data.summary ?? null
       } catch (err: any) {
         if (cancelled) return
         updateSource('synthesis', { status: 'error', facts: [err.message] })
@@ -266,9 +269,34 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       addFact('synthesis', `Intelligence report generated  ·  ${report.split('\n').length} lines`)
       addFact('synthesis', `7 sections: ICP, Positioning, Channels, Show HN, Content, Timing, Risks`)
 
+      await delay(300)
+      setPhase('playbooks')
+
+      const pbBlock: SourceBlock = { id: 'playbooks', name: 'Growth Playbooks', status: 'scanning', facts: [], badge: 'Growth DB' }
+      setSources(prev => [...prev, pbBlock])
+
+      let playbooks = null
+      try {
+        const pbRes = await fetch('/api/playbooks', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signals, report }),
+        })
+        if (!pbRes.ok) throw new Error('Playbook matching failed')
+        playbooks = await pbRes.json()
+        if (cancelled) return
+        updateSource('playbooks', { status: 'done' })
+        await delay(80)
+        addFact('playbooks', `${playbooks.matches.length} matched case studies found`)
+        await delay(80)
+        addFact('playbooks', playbooks.matches.map((m: any) => m.playbook.name).join('  ·  '))
+      } catch {
+        if (cancelled) return
+        updateSource('playbooks', { status: 'error', facts: ['Could not match playbooks — continuing without them'] })
+      }
+
       setPhase('done')
       await delay(800)
-      onComplete(signals, report)
+      onComplete(signals, report, summary, playbooks)
     }
 
     run()
@@ -306,9 +334,9 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
           <span style={{
             fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 10, letterSpacing: '0.08em',
             textTransform: 'uppercase',
-            color: isDone ? '#16A34A' : '#7C3AED',
+            color: isDone ? '#16A34A' : phase === 'playbooks' ? '#0A7D4E' : '#7C3AED',
           }}>
-            ● {isDone ? 'Complete' : phase === 'synthesis' ? 'Synthesizing' : 'Scanning'}
+            ● {isDone ? 'Complete' : phase === 'synthesis' ? 'Synthesizing' : phase === 'playbooks' ? 'Matching' : 'Scanning'}
           </span>
         </div>
       </header>

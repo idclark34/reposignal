@@ -3,7 +3,7 @@
 import { useState, use } from 'react'
 import AnalysisProgress from '@/components/AnalysisProgress'
 import DashboardView from '@/components/DashboardView'
-import { RawSignals } from '@/types'
+import { RawSignals, PlaybooksResponse, ReportSummary } from '@/types'
 
 interface Props {
   params: Promise<{ owner: string; repo: string }>
@@ -11,7 +11,7 @@ interface Props {
 
 type State =
   | { phase: 'loading' }
-  | { phase: 'done'; signals: RawSignals; report: string }
+  | { phase: 'done'; signals: RawSignals; report: string; summary: ReportSummary | null; playbooks: PlaybooksResponse | null }
   | { phase: 'error'; message: string }
 
 export default function DashboardPage({ params }: Props) {
@@ -74,11 +74,11 @@ export default function DashboardPage({ params }: Props) {
       <AnalysisProgress
         owner={owner}
         repo={repo}
-        onComplete={(signals, report) => setState({ phase: 'done', signals, report })}
+        onComplete={(signals, report, summary, playbooks) => setState({ phase: 'done', signals, report, summary, playbooks })}
         onError={msg => setState({ phase: 'error', message: msg })}
       />
     )
   }
 
-  return <DashboardView signals={state.signals} report={state.report} owner={owner} repo={repo} />
+  return <DashboardView signals={state.signals} report={state.report} summary={state.summary} owner={owner} repo={repo} playbooks={state.playbooks} />
 }

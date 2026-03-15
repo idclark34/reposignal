@@ -1,81 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { RawSignals, GitHubSignals, RedditPost, HNStory } from '@/types'
+import { RawSignals, GitHubSignals, RedditPost, HNStory, PlaybooksResponse, ReportSummary } from '@/types' // eslint-disable-line @typescript-eslint/no-unused-vars
+import PlaybookSection from '@/components/PlaybookSection'
+import IntelligenceView, { HeroSummaryBar } from '@/components/ReportSummaryView'
 
 interface Props {
   signals: RawSignals
   report: string
+  summary: ReportSummary | null
   owner: string
   repo: string
+  playbooks: PlaybooksResponse | null
 }
 
-// ── Markdown parsing (report) ───────────────────────────────────────
-interface Section { num: string; title: string; content: string }
-
-function parseSections(text: string): Section[] {
-  return text
-    .split(/(?=\d+\.\s+\*\*)/)
-    .map(part => {
-      const m = part.match(/^(\d+)\.\s+\*\*([^*]+)\*\*\s*(?:—\s*)?([\s\S]*)/)
-      return m ? { num: m[1], title: m[2].trim(), content: m[3].trim() } : null
-    })
-    .filter(Boolean) as Section[]
-}
-
-function renderInline(text: string): React.ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/).map((p, i) =>
-    p.startsWith('**') && p.endsWith('**')
-      ? <strong key={i} style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>{p.slice(2, -2)}</strong>
-      : <span key={i}>{p}</span>
-  )
-}
-
-function ReportSection({ s, defaultOpen }: { s: Section; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen ?? true)
-  return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 16,
-          padding: '18px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-        }}
-      >
-        <span style={{ fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11, color: 'rgba(124,58,237,0.8)', minWidth: 24 }}>
-          0{s.num}
-        </span>
-        <span style={{ fontFamily: 'var(--font-jakarta)', fontWeight: 700, fontSize: 16, color: 'white', flex: 1, letterSpacing: '-0.01em' }}>
-          {s.title}
-        </span>
-        <span style={{
-          fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11, color: 'rgba(255,255,255,0.3)',
-          transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block',
-        }}>▶</span>
-      </button>
-      {open && (
-        <div style={{ paddingLeft: 40, paddingBottom: 20 }}>
-          {s.content.split('\n').map((line, i) => {
-            const t = line.trim()
-            if (!t) return <div key={i} style={{ height: 6 }} />
-            const isBullet = t.startsWith('- ') || t.startsWith('• ')
-            const text = isBullet ? t.slice(2) : t
-            return isBullet ? (
-              <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 7, alignItems: 'flex-start' }}>
-                <span style={{ color: 'rgba(124,58,237,0.8)', fontWeight: 700, flexShrink: 0, lineHeight: 1.7 }}>—</span>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7 }}>{renderInline(text)}</span>
-              </div>
-            ) : (
-              <p key={i} style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, marginBottom: 5 }}>
-                {renderInline(text)}
-              </p>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── Reddit post card ────────────────────────────────────────────────
 function RedditCard({ post }: { post: RedditPost }) {
@@ -182,24 +119,8 @@ function FeedHeader({ badge, title, count }: { badge: React.ReactNode; title: st
 }
 
 // ── Main dashboard ────────────────────────────────────────────────────
-export default function DashboardView({ signals, report, owner, repo }: Props) {
+export default function DashboardView({ signals, report, summary, owner, repo, playbooks }: Props) {
   const g: GitHubSignals = signals.github
-  const sections = parseSections(report)
-  const [copied, setCopied] = useState(false)
-
-  function handleCopy() {
-    navigator.clipboard.writeText(report)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  function handleExport() {
-    const blob = new Blob([report], { type: 'text/markdown' })
-    const url = URL.createObjectURL(blob)
-    Object.assign(document.createElement('a'), { href: url, download: 'forkpulse-report.md' }).click()
-    URL.revokeObjectURL(url)
-  }
-
   const langTotal = Object.values(g.languages).reduce((a, b) => a + b, 0)
   const langSorted = Object.entries(g.languages).sort(([, a], [, b]) => b - a).slice(0, 5)
 
@@ -310,6 +231,9 @@ export default function DashboardView({ signals, report, owner, repo }: Props) {
           )}
         </div>
 
+        {/* ── Zone 1: Hero summary bar ── */}
+        {summary && <HeroSummaryBar summary={summary} />}
+
         {/* ── Reddit section ── */}
         {signals.reddit && signals.reddit.posts.length > 0 && (
           <>
@@ -326,66 +250,12 @@ export default function DashboardView({ signals, report, owner, repo }: Props) {
           </>
         )}
 
-        {/* ── Full-bleed dark report section ── */}
-        {report && (
-          <div style={{
-            margin: '48px -clamp(16px, 4vw, 24px)',
-            marginLeft: 'calc(-1 * clamp(16px, 4vw, 24px))',
-            marginRight: 'calc(-1 * clamp(16px, 4vw, 24px))',
-          }}>
-            <div className="feed-section-dark">
-              {/* Report header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap' as const, gap: 12 }}>
-                <div>
-                  <span className="badge-claude" style={{ marginBottom: 10, display: 'inline-block' }}>Claude API · Intelligence Report</span>
-                  <h2 style={{
-                    fontFamily: 'var(--font-jakarta)', fontWeight: 800,
-                    fontSize: 'clamp(1.4rem, 4vw, 1.9rem)', letterSpacing: '-0.025em',
-                    color: 'white', lineHeight: 1.15,
-                  }}>
-                    Your marketing brief
-                  </h2>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={handleCopy}
-                    style={{
-                      fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11,
-                      color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.07)',
-                      border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-                      padding: '6px 12px', cursor: 'pointer', transition: 'background 0.15s',
-                    }}
-                  >
-                    {copied ? '✓ Copied' : 'Copy'}
-                  </button>
-                  <button
-                    onClick={handleExport}
-                    style={{
-                      fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11,
-                      color: 'rgba(124,58,237,0.9)', background: 'rgba(124,58,237,0.12)',
-                      border: '1px solid rgba(124,58,237,0.3)', borderRadius: 8,
-                      padding: '6px 12px', cursor: 'pointer', transition: 'background 0.15s',
-                    }}
-                  >
-                    Export .md
-                  </button>
-                </div>
-              </div>
+        {/* ── Zone 2 + 3: Intelligence cards + collapsible report ── */}
+        {report && <IntelligenceView summary={summary} report={report} />}
 
-              {/* Report sections */}
-              {sections.length > 0
-                ? sections.map((s, i) => <ReportSection key={s.num} s={s} defaultOpen={i < 2} />)
-                : (
-                  <pre style={{
-                    fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 12,
-                    color: 'rgba(255,255,255,0.5)', whiteSpace: 'pre-wrap', lineHeight: 1.7,
-                  }}>
-                    {report}
-                  </pre>
-                )
-              }
-            </div>
-          </div>
+        {/* ── Growth Playbooks section ── */}
+        {playbooks && playbooks.matches.length > 0 && (
+          <PlaybookSection matches={playbooks.matches} />
         )}
 
         {/* ── HN section ── */}
