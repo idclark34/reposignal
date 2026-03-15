@@ -31,7 +31,7 @@ function getIP(req: NextRequest): string {
   )
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const limit = getLimit(pathname)
   if (!limit) return NextResponse.next()
@@ -77,6 +77,8 @@ export const config = {
   matcher: [
     '/api/synthesize',
     '/api/playbooks',
-    '/api/sources/:path*',
+    '/api/sources/github',
+    '/api/sources/hn',
+    '/api/sources/reddit',
   ],
 }
