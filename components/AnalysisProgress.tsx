@@ -171,7 +171,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         github = await res.json()
       } catch (err: any) {
         if (cancelled) return
-        console.error('[forkpulse] GitHub step failed:', err.name, err.message, '\nStack:', err.stack)
+        console.error('[forkpulse] GitHub step failed:', err.name, err.message)
         updateSource('github', { status: 'error', facts: [err.message] })
         onError(err.message)
         return
@@ -281,7 +281,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         summary = data.summary ?? null
       } catch (err: any) {
         if (cancelled) return
-        console.error('[forkpulse] Synthesis step failed:', err.name, err.message, '\nStack:', err.stack)
+        console.error('[forkpulse] Synthesis step failed:', err.name, err.message)
         updateSource('synthesis', { status: 'error', facts: [err.message] })
         onError(err.message)
         return
@@ -325,7 +325,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
 
     run().catch(err => {
       if (cancelled) return
-      console.error('[forkpulse] Unhandled error in run():', err.name, err.message, '\nStack:', err.stack)
+      console.error('[forkpulse] Unhandled error in run():', err.name, err.message)
       onError(err.message ?? 'Unexpected scan error')
     })
     return () => { cancelled = true }

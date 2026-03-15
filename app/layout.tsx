@@ -31,17 +31,11 @@ export const metadata: Metadata = {
     url: 'https://forkpulse.app',
     title: 'ForkPulse — Find the audience for your GitHub repo',
     description: 'ForkPulse maps Reddit discussions, HN threads, and GitHub signals to show you exactly who wants your project — and where to reach them.',
-    images: [{
-      url: '/og-image.png',
-      width: 1200,
-      height: 630,
-    }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'ForkPulse — Find the audience for your GitHub repo',
     description: 'ForkPulse maps Reddit discussions, HN threads, and GitHub signals to show you exactly who wants your project — and where to reach them.',
-    images: ['/og-image.png'],
   },
 }
 

@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         ctrl.close()
       } catch (err: any) {
         clearInterval(ping)
-        ctrl.enqueue(enc.encode(JSON.stringify({ error: err.message ?? 'Synthesis failed' })))
+        ctrl.enqueue(enc.encode(JSON.stringify({ error: 'Synthesis failed' })))
         ctrl.close()
       }
     },

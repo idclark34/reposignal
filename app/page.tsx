@@ -1,6 +1,17 @@
+import type { Metadata } from 'next'
 import GitHubAuth from '@/components/GitHubAuth'
 import RepoInput from '@/components/RepoInput'
 import SignalCarousel from '@/components/SignalCarousel'
+
+export const metadata: Metadata = {
+  openGraph: {
+    images: [{ url: '/api/og', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/api/og'],
+  },
+}
 
 const AVATARS = [
   { initials: 'AK', bg: '#7C3AED' },
@@ -152,7 +163,7 @@ export default function Home() {
           style={{
             fontFamily: 'var(--font-jakarta), var(--font-geist-sans), system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: 'clamp(2.2rem, 8vw, 3.5rem)',
+            fontSize: 'clamp(2.4rem, 8.5vw, 4rem)',
             lineHeight: 1.08,
             letterSpacing: '-0.03em',
             color: '#0A0A0A',
