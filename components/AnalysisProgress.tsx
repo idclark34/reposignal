@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { usePostHog } from 'posthog-js/react'
 import { GitHubSignals, HNSignals, RedditSignals, RawSignals, PlaybooksResponse, ReportSummary } from '@/types'
 
 interface Props {
@@ -137,6 +138,7 @@ function SourceCard({ block }: { block: SourceBlock }) {
 }
 
 export default function AnalysisProgress({ owner, repo, onComplete, onError }: Props) {
+  const posthog = usePostHog()
   const [sources, setSources] = useState<SourceBlock[]>([])
   const [elapsed, setElapsed] = useState(0)
   const [phase, setPhase] = useState<'github' | 'sources' | 'synthesis' | 'playbooks' | 'done'>('github')
@@ -158,6 +160,8 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
     let cancelled = false
 
     async function run() {
+      posthog?.capture('scan_started', { owner, repo })
+
       const ghBlock: SourceBlock = { id: 'github', name: 'GitHub', status: 'scanning', facts: [], badge: 'GitHub API' }
       setSources([ghBlock])
 
@@ -341,6 +345,15 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       }
 
       setPhase('done')
+      posthog?.capture('scan_completed', {
+        owner,
+        repo,
+        duration_seconds: Math.round((Date.now() - startRef.current) / 1000),
+        has_hn: !!signals.hn,
+        has_reddit: !!signals.reddit,
+        has_summary: !!summary,
+        playbook_count: playbooks?.matches.length ?? 0,
+      })
       await delay(800)
       onComplete(signals, report, summary, playbooks)
     }
@@ -348,6 +361,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
     run().catch(err => {
       if (cancelled) return
       console.error('[forkpulse] Unhandled error in run():', err.name, err.message)
+      posthog?.capture('scan_error', { owner, repo, error: err.message })
       onError(err.message ?? 'Unexpected scan error')
     })
     return () => { cancelled = true }
