@@ -171,6 +171,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         github = await res.json()
       } catch (err: any) {
         if (cancelled) return
+        console.error('[forkpulse] GitHub step failed:', err.name, err.message, '\nStack:', err.stack)
         updateSource('github', { status: 'error', facts: [err.message] })
         onError(err.message)
         return
@@ -205,35 +206,45 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       ])
 
       let hn: HNSignals | undefined
-      if (hnRes.status === 'fulfilled' && hnRes.value.ok) {
-        hn = await hnRes.value.json()
-        updateSource('hn', { status: 'done' })
-        await delay(80)
-        addFact('hn', `${hn!.totalStories.toLocaleString()} story mentions  ·  ${hn!.totalComments.toLocaleString()} comment mentions`)
-        await delay(80)
-        addFact('hn', `Query: "${hn!.query}"`)
-        if (hn!.showHNPosts.length > 0) {
+      try {
+        if (hnRes.status === 'fulfilled' && hnRes.value.ok) {
+          hn = await hnRes.value.json()
+          updateSource('hn', { status: 'done' })
           await delay(80)
-          addFact('hn', `${hn!.showHNPosts.length} Show HN post${hn!.showHNPosts.length > 1 ? 's' : ''} found`)
+          addFact('hn', `${hn!.totalStories.toLocaleString()} story mentions  ·  ${hn!.totalComments.toLocaleString()} comment mentions`)
+          await delay(80)
+          addFact('hn', `Query: "${hn!.query}"`)
+          if (hn!.showHNPosts.length > 0) {
+            await delay(80)
+            addFact('hn', `${hn!.showHNPosts.length} Show HN post${hn!.showHNPosts.length > 1 ? 's' : ''} found`)
+          }
+        } else {
+          updateSource('hn', { status: 'error', facts: ['Could not reach HN — continuing without it'] })
         }
-      } else {
+      } catch (err: any) {
+        console.error('[forkpulse] HN parse error:', err.name, err.message)
         updateSource('hn', { status: 'error', facts: ['Could not reach HN — continuing without it'] })
       }
 
       let reddit: RedditSignals | undefined
-      if (redditRes.status === 'fulfilled' && redditRes.value.ok) {
-        reddit = await redditRes.value.json()
-        updateSource('reddit', { status: 'done' })
-        await delay(80)
-        addFact('reddit', `${reddit!.totalResults.toLocaleString()} results  ·  ${reddit!.posts.length} posts indexed`)
-        await delay(80)
-        addFact('reddit', `Query: "${reddit!.query}"`)
-        if (reddit!.posts.length > 0) {
-          const topSubs = [...new Set(reddit!.posts.slice(0, 5).map(p => `r/${p.subreddit}`))].join('  ·  ')
+      try {
+        if (redditRes.status === 'fulfilled' && redditRes.value.ok) {
+          reddit = await redditRes.value.json()
+          updateSource('reddit', { status: 'done' })
           await delay(80)
-          addFact('reddit', `Top subreddits: ${topSubs}`)
+          addFact('reddit', `${reddit!.totalResults.toLocaleString()} results  ·  ${reddit!.posts.length} posts indexed`)
+          await delay(80)
+          addFact('reddit', `Query: "${reddit!.query}"`)
+          if (reddit!.posts.length > 0) {
+            const topSubs = [...new Set(reddit!.posts.slice(0, 5).map(p => `r/${p.subreddit}`))].join('  ·  ')
+            await delay(80)
+            addFact('reddit', `Top subreddits: ${topSubs}`)
+          }
+        } else {
+          updateSource('reddit', { status: 'error', facts: ['Could not reach Reddit — continuing without it'] })
         }
-      } else {
+      } catch (err: any) {
+        console.error('[forkpulse] Reddit parse error:', err.name, err.message)
         updateSource('reddit', { status: 'error', facts: ['Could not reach Reddit — continuing without it'] })
       }
 
@@ -258,6 +269,7 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
         summary = data.summary ?? null
       } catch (err: any) {
         if (cancelled) return
+        console.error('[forkpulse] Synthesis step failed:', err.name, err.message, '\nStack:', err.stack)
         updateSource('synthesis', { status: 'error', facts: [err.message] })
         onError(err.message)
         return
@@ -299,7 +311,11 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       onComplete(signals, report, summary, playbooks)
     }
 
-    run()
+    run().catch(err => {
+      if (cancelled) return
+      console.error('[forkpulse] Unhandled error in run():', err.name, err.message, '\nStack:', err.stack)
+      onError(err.message ?? 'Unexpected scan error')
+    })
     return () => { cancelled = true }
   }, [owner, repo])
 
