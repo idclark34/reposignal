@@ -23,18 +23,25 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'ForkPulse',
-  description: 'Your GitHub repo has an audience you\'ve never met. ForkPulse maps Reddit threads, HN discussions, and GitHub signals to show you exactly who wants your project.',
+  metadataBase: new URL('https://forkpulse.app'),
+  title: 'ForkPulse — Find the audience for your GitHub repo',
+  description: 'ForkPulse maps Reddit discussions, HN threads, and GitHub signals to show you exactly who wants your project — and where to reach them.',
   openGraph: {
-    title: 'ForkPulse — marketing intelligence for OSS builders',
-    description: 'Your GitHub repo has an audience you\'ve never met. Map Reddit, HN, and GitHub signals to find exactly who wants your project.',
-    siteName: 'ForkPulse',
     type: 'website',
+    url: 'https://forkpulse.app',
+    title: 'ForkPulse — Find the audience for your GitHub repo',
+    description: 'ForkPulse maps Reddit discussions, HN threads, and GitHub signals to show you exactly who wants your project — and where to reach them.',
+    images: [{
+      url: '/og-image.png',
+      width: 1200,
+      height: 630,
+    }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ForkPulse — marketing intelligence for OSS builders',
-    description: 'Your GitHub repo has an audience you\'ve never met. Map Reddit, HN, and GitHub signals to find exactly who wants your project.',
+    title: 'ForkPulse — Find the audience for your GitHub repo',
+    description: 'ForkPulse maps Reddit discussions, HN threads, and GitHub signals to show you exactly who wants your project — and where to reach them.',
+    images: ['/og-image.png'],
   },
 }
 
