@@ -24,7 +24,18 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: 'ForkPulse',
-  description: 'Marketing intelligence from your GitHub repository.',
+  description: 'Your GitHub repo has an audience you\'ve never met. ForkPulse maps Reddit threads, HN discussions, and GitHub signals to show you exactly who wants your project.',
+  openGraph: {
+    title: 'ForkPulse — marketing intelligence for OSS builders',
+    description: 'Your GitHub repo has an audience you\'ve never met. Map Reddit, HN, and GitHub signals to find exactly who wants your project.',
+    siteName: 'ForkPulse',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ForkPulse — marketing intelligence for OSS builders',
+    description: 'Your GitHub repo has an audience you\'ve never met. Map Reddit, HN, and GitHub signals to find exactly who wants your project.',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
