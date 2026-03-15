@@ -128,7 +128,7 @@ Produce a report with these exact sections. Each section must cite specific evid
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
+    max_tokens: 2500,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })

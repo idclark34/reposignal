@@ -270,7 +270,13 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
           try { const e = await res.json(); errorMsg = e.error ?? errorMsg } catch { /* non-JSON (Cloudflare HTML) */ }
           throw new Error(errorMsg)
         }
-        const data = await res.json()
+        // Route streams keepalive newlines then a final JSON line.
+        // Read the full text, find the last non-empty line, parse it.
+        const raw = await res.text()
+        const lastLine = raw.trim().split('\n').filter(Boolean).pop() ?? '{}'
+        let data: any
+        try { data = JSON.parse(lastLine) } catch { throw new Error('Synthesis returned invalid response') }
+        if (data.error) throw new Error(data.error)
         report = data.fullReport ?? data.report
         summary = data.summary ?? null
       } catch (err: any) {
