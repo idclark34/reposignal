@@ -263,7 +263,13 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(signals),
         })
-        if (!res.ok) throw new Error((await res.json()).error ?? 'Synthesis failed')
+        if (!res.ok) {
+          let errorMsg = res.status === 524 || res.status === 502 || res.status === 504
+            ? 'Analysis timed out — Claude took too long. Try a smaller repo or try again.'
+            : 'Synthesis failed'
+          try { const e = await res.json(); errorMsg = e.error ?? errorMsg } catch { /* non-JSON (Cloudflare HTML) */ }
+          throw new Error(errorMsg)
+        }
         const data = await res.json()
         report = data.fullReport ?? data.report
         summary = data.summary ?? null

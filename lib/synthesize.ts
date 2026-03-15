@@ -155,6 +155,10 @@ Produce a report with these exact sections. Each section must cite specific evid
 
   console.log('[synthesize] done, tokens used:', message.usage, '| summary parsed:', !!summary)
 
-  const humanizedReport = await humanizeReport(fullReport)
+  // Race humanizer against a 25-second timeout — if Claude is slow, return the original
+  const humanizedReport = await Promise.race([
+    humanizeReport(fullReport),
+    new Promise<string>(resolve => setTimeout(() => resolve(fullReport), 25_000)),
+  ])
   return { summary, fullReport: humanizedReport }
 }
