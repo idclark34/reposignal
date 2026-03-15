@@ -9,7 +9,17 @@ interface Repo {
   name: string
 }
 
-export default function GitHubAuth() {
+interface Props {
+  dark?: boolean
+}
+
+const GH_ICON = (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
+    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+  </svg>
+)
+
+export default function GitHubAuth({ dark = false }: Props) {
   const { data: session, status } = useSession()
   const [repos, setRepos] = useState<Repo[]>([])
   const [selected, setSelected] = useState('')
@@ -36,10 +46,19 @@ export default function GitHubAuth() {
     router.push(`/dashboard/${owner}/${repo}`)
   }
 
+  const pillBg = dark ? 'rgba(255,255,255,0.12)' : 'var(--bg-surface)'
+  const pillBorder = dark ? 'rgba(255,255,255,0.16)' : 'var(--border-strong)'
+  const textColor = dark ? 'rgba(255,255,255,0.7)' : 'var(--text-faint)'
+
   if (status === 'loading') {
     return (
-      <div className="repo-input-wrap" style={{ padding: '14px 16px', opacity: 0.5 }}>
-        <span className="mono" style={{ fontSize: 12, color: 'var(--ink-faint)' }}>loading…</span>
+      <div style={{
+        height: 50, borderRadius: 9999, background: pillBg, border: `1.5px solid ${pillBorder}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{ fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 12, color: textColor }}>
+          loading<span className="blink">_</span>
+        </span>
       </div>
     )
   }
@@ -48,32 +67,41 @@ export default function GitHubAuth() {
     return (
       <button
         onClick={() => signIn('github')}
-        className="repo-input-wrap"
         style={{
           width: '100%',
-          padding: '14px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          background: '#FFFFFF',
+          color: '#0A0A0A',
+          border: '1.5px solid rgba(0,0,0,0.14)',
+          padding: '14px 28px',
+          borderRadius: 9999,
+          fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
+          fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em',
           cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: 'var(--ink)',
-          borderColor: 'var(--ink)',
+          minHeight: 50,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+          transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.1s',
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--bg)" style={{ flexShrink: 0 }}>
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-        </svg>
-        <span style={{ fontFamily: 'var(--font-geist-sans)', fontSize: 13, fontWeight: 600, color: 'var(--bg)' }}>
-          Sign in with GitHub
-        </span>
-        <span style={{ marginLeft: 'auto', color: 'var(--dark-muted)', fontSize: 13 }}>→</span>
+        {GH_ICON}
+        Sign in with GitHub
+        <span style={{ opacity: 0.35, marginLeft: 2, fontSize: 13 }}>→</span>
       </button>
     )
   }
 
   return (
     <div>
-      <div className="repo-input-wrap">
+      {/* Repo select + analyze */}
+      <div style={{
+        display: 'flex',
+        background: dark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+        border: `1.5px solid ${pillBorder}`,
+        borderRadius: 9999,
+        overflow: 'hidden',
+        boxShadow: dark ? 'none' : 'var(--shadow-sm)',
+        transition: 'border-color 0.15s',
+      }}>
         <select
           value={selected}
           onChange={e => setSelected(e.target.value)}
@@ -83,13 +111,16 @@ export default function GitHubAuth() {
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            padding: '14px 16px',
+            padding: '14px 16px 14px 20px',
             fontFamily: 'var(--font-ibm-plex-mono)',
             fontSize: 13,
-            color: loadingRepos ? 'var(--ink-faint)' : 'var(--ink)',
+            color: loadingRepos
+              ? textColor
+              : dark ? 'rgba(255,255,255,0.9)' : 'var(--text-primary)',
             cursor: 'pointer',
             appearance: 'none',
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B6258' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+            minWidth: 0,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'right 14px center',
             paddingRight: 36,
@@ -100,26 +131,35 @@ export default function GitHubAuth() {
             : repos.map(r => <option key={r.full_name} value={r.full_name}>{r.full_name}</option>)
           }
         </select>
-        <button onClick={handleAnalyze} className="repo-submit" disabled={loadingRepos}>
-          Analyze
+        <button
+          onClick={handleAnalyze}
+          disabled={loadingRepos}
+          style={{
+            background: 'var(--cta-bg)', color: 'white', border: 'none',
+            padding: '0 22px', fontSize: 13, fontWeight: 600,
+            cursor: loadingRepos ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font-geist-sans)',
+            borderRadius: '0 9999px 9999px 0',
+            opacity: loadingRepos ? 0.5 : 1,
+            transition: 'background 0.15s',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Analyze →
         </button>
       </div>
-      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="mono" style={{ fontSize: 10, color: 'var(--ink-faint)', letterSpacing: '0.04em' }}>
+
+      {/* User info + sign out */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
+        <span style={{ fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11, color: textColor }}>
           {session.user?.name ?? session.user?.email}
         </span>
         <button
           onClick={() => signOut()}
-          className="mono"
           style={{
-            fontSize: 10,
-            color: 'var(--ink-faint)',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            letterSpacing: '0.04em',
-            textDecoration: 'underline',
-            padding: 0,
+            fontFamily: 'var(--font-ibm-plex-mono)', fontSize: 11,
+            color: textColor, background: 'none', border: 'none',
+            cursor: 'pointer', textDecoration: 'underline', padding: 0,
           }}
         >
           sign out

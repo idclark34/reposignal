@@ -43,11 +43,14 @@ export default function RepoInput() {
           spellCheck={false}
         />
         <button type="submit" className="repo-submit">
-          Analyze my repo
+          Analyze
         </button>
       </div>
       {error && (
-        <p className="mono" style={{ marginTop: 8, fontSize: 11, color: 'var(--accent)' }}>
+        <p style={{
+          marginTop: 8, fontFamily: 'var(--font-ibm-plex-mono)',
+          fontSize: 11, color: '#DC2626', letterSpacing: '0.01em',
+        }}>
           ↳ {error}
         </p>
       )}
