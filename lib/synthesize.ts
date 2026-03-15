@@ -1,10 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { RawSignals, ReportSummary } from '@/types'
-import { humanizeReport } from '@/lib/humanize'
 
 const client = new Anthropic()
 
-export async function synthesize(signals: RawSignals): Promise<{ summary: ReportSummary | null; fullReport: string }> {
+// ── Shared context builder ────────────────────────────────────────────────────
+function buildContext(signals: RawSignals) {
   const { github, hn, reddit } = signals
 
   const systemPrompt = `You are a product analyst specializing in developer tools and indie software.
@@ -48,43 +48,10 @@ ${reddit.posts.slice(0, 10).map(p =>
     : '## Reddit\nNo data available.\n'
 
   const codeSection = github.keyFiles.length > 0
-    ? `
-## Key Source Files (actual code — use this to understand what the app really does)
-${github.keyFiles.map(f => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n')}
-`
+    ? `\n## Key Source Files (actual code — use this to understand what the app really does)\n${github.keyFiles.map(f => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n')}\n`
     : ''
 
-  const userPrompt = `Analyze this repository and produce a marketing intelligence report grounded in the evidence below.
-
-First, output a JSON block wrapped in <summary> tags with exactly this structure:
-
-<summary>
-{
-  "icp": "One sentence describing the ideal user",
-  "topChannel": "Single best launch channel",
-  "trendDirection": "rising",
-  "audienceSize": "medium",
-  "launchReadiness": 72,
-  "topSubreddits": ["r/name1", "r/name2", "r/name3"],
-  "painPhrases": ["phrase1", "phrase2", "phrase3"],
-  "showHNHeadline": "Best Show HN headline candidate",
-  "biggestRisk": "One sentence on the biggest positioning risk",
-  "winningAngle": "The single strongest marketing angle"
-}
-</summary>
-
-trendDirection must be exactly one of: "rising", "stable", "declining"
-audienceSize must be exactly one of: "small", "medium", "large"
-launchReadiness must be an integer 0-100
-topSubreddits must include the "r/" prefix
-painPhrases must be 3 short phrases (under 8 words each) quoting actual user pain language from the data
-
-Then write the full report below.
-
----
-
-
-## Repository
+  const repoContext = `## Repository
 Name: ${github.name}
 Description: ${github.description}
 Language: ${github.language} | Stars: ${github.stars} | Forks: ${github.forks} | Contributors: ${github.contributors}
@@ -104,9 +71,74 @@ ${github.recentCommits.map(c => `- ${c.date.slice(0, 10)}  ${c.message}`).join('
 ${github.topIssues.map(i => `- [${i.comments} comments] ${i.title}\n  ${i.body.slice(0, 200)}`).join('\n') || 'None'}
 ${codeSection}
 ${hnSection}
-${redditSection}
+${redditSection}`
+
+  return { systemPrompt, repoContext }
+}
+
+// ── Call 1: summary JSON via Haiku (fast) ────────────────────────────────────
+async function callSummaryJSON(
+  systemPrompt: string,
+  repoContext: string,
+): Promise<ReportSummary | null> {
+  const userPrompt = `Analyze this repository data and output ONLY a JSON object wrapped in <summary> tags. No other text before or after.
+
+<summary>
+{
+  "icp": "One sentence describing the ideal user",
+  "topChannel": "Single best launch channel",
+  "trendDirection": "rising",
+  "audienceSize": "medium",
+  "launchReadiness": 72,
+  "topSubreddits": ["SideProject", "golang", "webdev"],
+  "painPhrases": ["phrase1", "phrase2", "phrase3"],
+  "showHNHeadline": "Best Show HN headline candidate",
+  "biggestRisk": "One sentence on the biggest positioning risk",
+  "winningAngle": "The single strongest marketing angle"
+}
+</summary>
+
+Rules:
+- trendDirection must be exactly one of: "rising", "stable", "declining"
+- audienceSize must be exactly one of: "small", "medium", "large"
+- launchReadiness must be an integer 0-100
+- topSubreddits must NOT include the "r/" prefix — just the subreddit name
+- painPhrases must be 3 short phrases (under 8 words each) quoting actual user pain language from the data
 
 ---
+
+${repoContext}`
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 400,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  })
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : ''
+  const match = text.match(/<summary>([\s\S]*?)<\/summary>/)
+  if (!match) {
+    console.warn('[synthesize] summary JSON not found in Haiku response')
+    return null
+  }
+  try {
+    const summary = JSON.parse(match[1].trim()) as ReportSummary
+    summary.launchReadiness = Math.max(0, Math.min(100, Math.round(summary.launchReadiness)))
+    console.log('[synthesize] summary done, tokens:', message.usage)
+    return summary
+  } catch {
+    console.warn('[synthesize] summary JSON parse failed')
+    return null
+  }
+}
+
+// ── Call 2: full prose report via Sonnet ─────────────────────────────────────
+async function callFullReport(
+  systemPrompt: string,
+  repoContext: string,
+): Promise<string> {
+  const userPrompt = `Analyze this repository and write a marketing intelligence report grounded in the evidence below.
 
 Produce a report with these exact sections. Each section must cite specific evidence from the data above.
 
@@ -122,9 +154,11 @@ Produce a report with these exact sections. Each section must cite specific evid
 
 6. **Deployment & Launch Readiness** — Is this app ready to launch? What's missing? Cite commit velocity, open issue quality, and any gaps between what the code does vs what the README promises.
 
-7. **Gaps & Risks** — What does the data say is missing, risky, or likely to confuse the target user on first encounter?`
+7. **Gaps & Risks** — What does the data say is missing, risky, or likely to confuse the target user on first encounter?
 
-  console.log('[synthesize] calling Claude, context size ~', userPrompt.length, 'chars')
+---
+
+${repoContext}`
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -133,32 +167,39 @@ Produce a report with these exact sections. Each section must cite specific evid
     messages: [{ role: 'user', content: userPrompt }],
   })
 
-  const content = message.content[0]
-  if (content.type !== 'text') throw new Error('Unexpected response type from Claude')
+  console.log('[synthesize] report done, tokens:', message.usage)
+  return message.content[0].type === 'text' ? message.content[0].text : ''
+}
 
-  const raw = content.text
-  const summaryMatch = raw.match(/<summary>([\s\S]*?)<\/summary>/)
+// ── Streaming export ─────────────────────────────────────────────────────────
+export type SynthesisChunk =
+  | { type: 'summary'; summary: ReportSummary | null }
+  | { type: 'report'; fullReport: string }
+
+// Backwards-compatible wrapper for legacy callers
+export async function synthesize(signals: RawSignals): Promise<{ summary: ReportSummary | null; fullReport: string }> {
   let summary: ReportSummary | null = null
-  let fullReport = raw
-
-  if (summaryMatch) {
-    try {
-      summary = JSON.parse(summaryMatch[1].trim())
-      // Clamp launchReadiness to 0-100
-      if (summary) summary.launchReadiness = Math.max(0, Math.min(100, Math.round(summary.launchReadiness)))
-    } catch {
-      // summary stays null
-    }
-    const afterTag = raw.indexOf('</summary>') + '</summary>'.length
-    fullReport = raw.slice(afterTag).trim()
+  let fullReport = ''
+  for await (const chunk of synthesizeStreaming(signals)) {
+    if (chunk.type === 'summary') summary = chunk.summary
+    if (chunk.type === 'report') fullReport = chunk.fullReport
   }
+  return { summary, fullReport }
+}
 
-  console.log('[synthesize] done, tokens used:', message.usage, '| summary parsed:', !!summary)
+export async function* synthesizeStreaming(signals: RawSignals): AsyncGenerator<SynthesisChunk> {
+  const { systemPrompt, repoContext } = buildContext(signals)
+  console.log('[synthesize] starting parallel calls, context ~', repoContext.length, 'chars')
 
-  // Race humanizer against a 25-second timeout — if Claude is slow, return the original
-  const humanizedReport = await Promise.race([
-    humanizeReport(fullReport),
-    new Promise<string>(resolve => setTimeout(() => resolve(fullReport), 25_000)),
-  ])
-  return { summary, fullReport: humanizedReport }
+  // Fire both calls immediately — they run concurrently
+  const summaryP = callSummaryJSON(systemPrompt, repoContext)
+  const reportP = callFullReport(systemPrompt, repoContext)
+
+  // Yield summary as soon as Haiku responds (~3-5s)
+  const summary = await summaryP
+  yield { type: 'summary', summary }
+
+  // Yield report when Sonnet finishes (runs in parallel with above)
+  const fullReport = await reportP
+  yield { type: 'report', fullReport }
 }

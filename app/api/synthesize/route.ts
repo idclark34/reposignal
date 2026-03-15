@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
-import { synthesize } from '@/lib/synthesize'
+import { synthesizeStreaming } from '@/lib/synthesize'
 import { RawSignals } from '@/types'
 import { checkBodySize } from '@/lib/guards'
 
-// Allow up to 5 min for Sonnet synthesis + Haiku humanizer chain
+// Sonnet report call can take up to ~30s; keep generous ceiling
 export const maxDuration = 300
 
 export async function POST(req: NextRequest) {
@@ -21,9 +21,8 @@ export async function POST(req: NextRequest) {
 
   const enc = new TextEncoder()
 
-  // Stream keepalive newlines every 8 seconds so Cloudflare's 100s tunnel
-  // timeout doesn't fire while Claude is thinking. The final payload is the
-  // last non-empty line; everything before it is whitespace the client ignores.
+  // Stream NDJSON: keepalive newlines every 8s to prevent Cloudflare 524,
+  // then one JSON line per chunk (summary first, report second).
   const stream = new ReadableStream({
     async start(ctrl) {
       const ping = setInterval(() => {
@@ -31,13 +30,15 @@ export async function POST(req: NextRequest) {
       }, 8_000)
 
       try {
-        const { summary, fullReport } = await synthesize(signals)
+        for await (const chunk of synthesizeStreaming(signals)) {
+          ctrl.enqueue(enc.encode(JSON.stringify(chunk) + '\n'))
+        }
         clearInterval(ping)
-        ctrl.enqueue(enc.encode(JSON.stringify({ summary, fullReport, report: fullReport })))
         ctrl.close()
-      } catch (err: any) {
+      } catch (err) {
         clearInterval(ping)
-        ctrl.enqueue(enc.encode(JSON.stringify({ error: 'Synthesis failed' })))
+        console.error('[synthesize route] error:', err)
+        ctrl.enqueue(enc.encode(JSON.stringify({ error: 'Synthesis failed' }) + '\n'))
         ctrl.close()
       }
     },

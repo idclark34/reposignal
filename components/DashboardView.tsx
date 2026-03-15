@@ -523,7 +523,7 @@ export default function DashboardView({ signals, report, summary, owner, repo, p
                             color: '#1D9E75', background: '#1D9E7514',
                             borderRadius: 20, padding: '2px 8px',
                           }}>
-                            r/{s}
+                            {s.startsWith('r/') ? s : `r/${s}`}
                           </span>
                         ))}
                       </div>

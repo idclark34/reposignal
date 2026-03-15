@@ -255,8 +255,8 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
       setSources(prev => [...prev, synBlock])
 
       const signals: RawSignals = { github, hn, reddit, fetchedAt: new Date().toISOString() }
-      let report: string
-      let summary = null
+      let report = ''
+      let summary: ReportSummary | null = null
 
       try {
         const res = await fetch('/api/synthesize', {
@@ -270,15 +270,37 @@ export default function AnalysisProgress({ owner, repo, onComplete, onError }: P
           try { const e = await res.json(); errorMsg = e.error ?? errorMsg } catch { /* non-JSON (Cloudflare HTML) */ }
           throw new Error(errorMsg)
         }
-        // Route streams keepalive newlines then a final JSON line.
-        // Read the full text, find the last non-empty line, parse it.
-        const raw = await res.text()
-        const lastLine = raw.trim().split('\n').filter(Boolean).pop() ?? '{}'
-        let data: any
-        try { data = JSON.parse(lastLine) } catch { throw new Error('Synthesis returned invalid response') }
-        if (data.error) throw new Error(data.error)
-        report = data.fullReport ?? data.report
-        summary = data.summary ?? null
+
+        // Route streams NDJSON: keepalive newlines, then one JSON line per chunk.
+        // First line: { type: 'summary', summary: {...} }  — arrives fast via Haiku
+        // Second line: { type: 'report', fullReport: '...' } — arrives after Sonnet
+        const reader = res.body!.getReader()
+        const decoder = new TextDecoder()
+        let buf = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (cancelled) { try { reader.cancel() } catch {} return }
+          if (done) break
+          buf += decoder.decode(value, { stream: true })
+          const lines = buf.split('\n')
+          buf = lines.pop() ?? ''
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed) continue
+            let data: any
+            try { data = JSON.parse(trimmed) } catch { continue }
+            if (data.error) throw new Error(data.error)
+            if (data.type === 'summary') {
+              summary = data.summary ?? null
+              addFact('synthesis', 'ICP + signals data ready')
+            } else if (data.type === 'report') {
+              report = data.fullReport ?? ''
+            }
+          }
+        }
+
+        if (!report) throw new Error('Synthesis returned invalid response')
       } catch (err: any) {
         if (cancelled) return
         console.error('[forkpulse] Synthesis step failed:', err.name, err.message)
